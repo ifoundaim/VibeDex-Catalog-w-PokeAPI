@@ -56,6 +56,12 @@ body {
   box-shadow: var(--shadow);
 }
 
+.intro {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
 .eyebrow {
   text-transform: uppercase;
   letter-spacing: 0.18em;
@@ -79,9 +85,38 @@ h1 {
 
 .controls {
   display: flex;
-  flex-direction: column;
+  flex-wrap: wrap;
   gap: 12px;
-  align-items: flex-start;
+  align-items: center;
+}
+
+.control {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.control label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--ink-soft);
+}
+
+.control input {
+  min-width: 220px;
+  padding: 10px 16px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: #ffffff;
+  font-size: 0.95rem;
+  color: var(--ink);
+  outline: none;
+}
+
+.control input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(231, 111, 81, 0.18);
 }
 
 .loaded-count {
@@ -113,6 +148,21 @@ button:disabled {
 .primary:hover:not(:disabled) {
   transform: translateY(-2px);
   box-shadow: 0 16px 30px rgba(231, 111, 81, 0.4);
+}
+
+.ghost {
+  background: #ffffff;
+  border: 1px solid var(--border);
+  color: var(--ink);
+  padding: 10px 18px;
+  border-radius: 999px;
+  font-weight: 600;
+  transition: transform 0.2s ease, border 0.2s ease;
+}
+
+.ghost:hover:not(:disabled) {
+  transform: translateY(-2px);
+  border-color: var(--accent);
 }
 
 .status {
@@ -252,7 +302,13 @@ button:disabled {
   }
 
   .controls {
-    flex-direction: row;
-    align-items: center;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .control input,
+  .ghost,
+  .primary {
+    width: 100%;
   }
 }

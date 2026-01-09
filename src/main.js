@@ -10,7 +10,10 @@ const state = {
   detailsLoading: false,
   detailsError: '',
   details: null,
-  selectedUrl: ''
+  selectedUrl: '',
+  searchQuery: '',
+  sortDirection: 'asc',
+  detailsCache: new Map()
 }
 
 const app = document.querySelector('#app')
@@ -18,14 +21,24 @@ const app = document.querySelector('#app')
 app.innerHTML = `
   <div class="app">
     <header class="top-bar">
-      <div>
+      <div class="intro">
         <p class="eyebrow">VibeDex Catalog</p>
         <h1>Pokemon Catalog</h1>
         <p class="subtitle">Catch up with the latest creatures, one page at a time.</p>
-      </div>
-      <div class="controls">
-        <div class="loaded-count" id="loaded-count">Loaded: 0</div>
-        <button class="primary" id="load-more" type="button">Load More</button>
+        <div class="controls">
+          <div class="control">
+            <label for="search-input">Search name</label>
+            <input
+              id="search-input"
+              type="search"
+              placeholder="e.g. pikachu"
+              autocomplete="off"
+            />
+          </div>
+          <button class="ghost" id="sort-toggle" type="button">Sort A-Z</button>
+          <button class="primary" id="load-more" type="button">Load More</button>
+          <div class="loaded-count" id="loaded-count">Loaded: 0</div>
+        </div>
       </div>
     </header>
     <div class="status" id="list-status" role="status" aria-live="polite"></div>
@@ -45,11 +58,46 @@ const listStatusEl = document.querySelector('#list-status')
 const detailPanelEl = document.querySelector('#detail-panel')
 const loadMoreBtn = document.querySelector('#load-more')
 const loadedCountEl = document.querySelector('#loaded-count')
+const searchInputEl = document.querySelector('#search-input')
+const sortToggleBtn = document.querySelector('#sort-toggle')
+
+function getVisibleItems() {
+  const query = state.searchQuery.trim().toLowerCase()
+  let visibleItems = state.items
+
+  if (query) {
+    visibleItems = visibleItems.filter((item) => item.name.includes(query))
+  }
+
+  visibleItems = [...visibleItems].sort((a, b) =>
+    a.name.localeCompare(b.name, 'en', { sensitivity: 'base' })
+  )
+
+  if (state.sortDirection === 'desc') {
+    visibleItems.reverse()
+  }
+
+  return visibleItems
+}
+
+function renderControls() {
+  loadedCountEl.textContent = `Loaded: ${state.items.length}`
+  sortToggleBtn.textContent =
+    state.sortDirection === 'asc' ? 'Sort A-Z' : 'Sort Z-A'
+}
 
 function renderList() {
-  loadedCountEl.textContent = `Loaded: ${state.items.length}`
+  const visibleItems = getVisibleItems()
+  renderControls()
 
-  listEl.innerHTML = state.items
+  if (!visibleItems.length) {
+    listEl.innerHTML = state.searchQuery.trim()
+      ? '<p class="muted">No matches.</p>'
+      : ''
+    return
+  }
+
+  listEl.innerHTML = visibleItems
     .map((item) => {
       const selectedClass = item.url === state.selectedUrl ? 'selected' : ''
       return `
@@ -153,15 +201,26 @@ async function loadMorePokemon() {
 }
 
 async function loadPokemonDetails(url) {
-  state.detailsLoading = true
   state.detailsError = ''
-  state.details = null
   state.selectedUrl = url
   renderList()
+
+  const cachedDetails = state.detailsCache.get(url)
+  if (cachedDetails) {
+    state.detailsLoading = false
+    state.details = cachedDetails
+    renderDetails()
+    return
+  }
+
+  state.detailsLoading = true
+  state.details = null
   renderDetails()
 
   try {
-    state.details = await fetchPokemonDetails(url)
+    const details = await fetchPokemonDetails(url)
+    state.details = details
+    state.detailsCache.set(url, details)
   } catch (error) {
     state.detailsError = 'Could not load Pokemon details. Please try again.'
   } finally {
@@ -184,6 +243,16 @@ listEl.addEventListener('click', (event) => {
 
 loadMoreBtn.addEventListener('click', () => {
   loadMorePokemon()
+})
+
+searchInputEl.addEventListener('input', (event) => {
+  state.searchQuery = event.target.value
+  renderList()
+})
+
+sortToggleBtn.addEventListener('click', () => {
+  state.sortDirection = state.sortDirection === 'asc' ? 'desc' : 'asc'
+  renderList()
 })
 
 loadMorePokemon()
