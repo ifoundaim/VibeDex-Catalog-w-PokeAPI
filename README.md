@@ -6,6 +6,7 @@ Small Vite + vanilla JavaScript app that lists Pokemon from PokeAPI with paginat
 
 ```bash
 npm install
+npm --prefix server install
 ```
 
 ## Run
@@ -13,6 +14,36 @@ npm install
 ```bash
 npm run dev
 ```
+
+## Run client + server
+
+```bash
+# Terminal 1 (client)
+npm run dev
+
+# Terminal 2 (server)
+npm --prefix server run dev
+```
+
+Or run both with one command:
+
+```bash
+npm run dev:all
+```
+
+## Server environment
+
+Create `server/.env` from the example and fill in your upstream API details:
+
+```bash
+cp server/.env.example server/.env
+```
+
+- `PROXY_API_BASE_URL`: Base URL of the protected API (no secrets in the browser).
+- `PROXY_API_KEY`: Secret key used by the proxy server.
+
+The proxy uses `Authorization: Bearer <PROXY_API_KEY>` when calling the upstream API.
+The demo button calls the path defined in `src/main.js`, so update `PROXY_DEMO_PATH` to match your API.
 
 ## How it works
 

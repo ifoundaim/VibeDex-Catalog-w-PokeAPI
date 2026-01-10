@@ -1,5 +1,9 @@
 import './style.css'
-import { fetchPokemonDetails, fetchPokemonList } from './api.js'
+import {
+  fetchPokemonDetails,
+  fetchPokemonList,
+  fetchProtectedResource
+} from './api.js'
 
 const state = {
   limit: 20,
@@ -12,8 +16,13 @@ const state = {
   details: null,
   selectedUrl: '',
   searchQuery: '',
-  sortDirection: 'asc',
-  detailsCache: new Map()
+  sortMode: 'number',
+  nameSortDirection: 'asc',
+  numberSortDirection: 'asc',
+  detailsCache: new Map(),
+  proxyLoading: false,
+  proxyError: '',
+  proxyResult: null
 }
 
 const app = document.querySelector('#app')
@@ -35,7 +44,8 @@ app.innerHTML = `
               autocomplete="off"
             />
           </div>
-          <button class="ghost" id="sort-toggle" type="button">Sort A-Z</button>
+          <button class="ghost" id="sort-name" type="button">Sort A-Z</button>
+          <button class="ghost" id="sort-number" type="button">Sort # First-Last</button>
           <button class="primary" id="load-more" type="button">Load More</button>
           <div class="loaded-count" id="loaded-count">Loaded: 0</div>
         </div>
@@ -50,6 +60,23 @@ app.innerHTML = `
         <p class="muted">Select a Pokemon to see the details.</p>
       </section>
     </main>
+    <section class="proxy-panel">
+      <div class="proxy-card">
+        <div class="proxy-header">
+          <div>
+            <p class="eyebrow">Protected API Demo</p>
+            <p class="proxy-copy">
+              Calls the local proxy so secrets stay on the server.
+            </p>
+          </div>
+          <button class="ghost" id="proxy-demo" type="button">
+            Protected API Demo
+          </button>
+        </div>
+        <div class="status" id="proxy-status" role="status" aria-live="polite"></div>
+        <pre class="proxy-output" id="proxy-output"></pre>
+      </div>
+    </section>
   </div>
 `
 
@@ -59,7 +86,14 @@ const detailPanelEl = document.querySelector('#detail-panel')
 const loadMoreBtn = document.querySelector('#load-more')
 const loadedCountEl = document.querySelector('#loaded-count')
 const searchInputEl = document.querySelector('#search-input')
-const sortToggleBtn = document.querySelector('#sort-toggle')
+const sortNameBtn = document.querySelector('#sort-name')
+const sortNumberBtn = document.querySelector('#sort-number')
+const proxyDemoBtn = document.querySelector('#proxy-demo')
+const proxyStatusEl = document.querySelector('#proxy-status')
+const proxyOutputEl = document.querySelector('#proxy-output')
+
+const PROXY_DEMO_PATH = '/v1/some-resource'
+const PROXY_DEMO_QUERY = ''
 
 function getVisibleItems() {
   const query = state.searchQuery.trim().toLowerCase()
@@ -69,11 +103,20 @@ function getVisibleItems() {
     visibleItems = visibleItems.filter((item) => item.name.includes(query))
   }
 
-  visibleItems = [...visibleItems].sort((a, b) =>
-    a.name.localeCompare(b.name, 'en', { sensitivity: 'base' })
-  )
+  const direction =
+    state.sortMode === 'name'
+      ? state.nameSortDirection
+      : state.numberSortDirection
 
-  if (state.sortDirection === 'desc') {
+  visibleItems = [...visibleItems].sort((a, b) => {
+    if (state.sortMode === 'name') {
+      return a.name.localeCompare(b.name, 'en', { sensitivity: 'base' })
+    }
+
+    return a.index - b.index
+  })
+
+  if (direction === 'desc') {
     visibleItems.reverse()
   }
 
@@ -82,8 +125,17 @@ function getVisibleItems() {
 
 function renderControls() {
   loadedCountEl.textContent = `Loaded: ${state.items.length}`
-  sortToggleBtn.textContent =
-    state.sortDirection === 'asc' ? 'Sort A-Z' : 'Sort Z-A'
+  sortNameBtn.textContent =
+    state.nameSortDirection === 'asc' ? 'Sort A-Z' : 'Sort Z-A'
+  sortNumberBtn.textContent =
+    state.numberSortDirection === 'asc'
+      ? 'Sort # First-Last'
+      : 'Sort # Last-First'
+
+  sortNameBtn.classList.toggle('active', state.sortMode === 'name')
+  sortNumberBtn.classList.toggle('active', state.sortMode === 'number')
+  sortNameBtn.setAttribute('aria-pressed', state.sortMode === 'name')
+  sortNumberBtn.setAttribute('aria-pressed', state.sortMode === 'number')
 }
 
 function renderList() {
@@ -173,6 +225,28 @@ function renderDetails() {
   `
 }
 
+function renderProxyDemo() {
+  if (state.proxyLoading) {
+    proxyStatusEl.textContent = 'Loading protected data...'
+    proxyStatusEl.className = 'status loading'
+    proxyOutputEl.textContent = 'Fetching response from the proxy...'
+  } else if (state.proxyError) {
+    proxyStatusEl.textContent = state.proxyError
+    proxyStatusEl.className = 'status error'
+    proxyOutputEl.textContent = state.proxyResult
+      ? JSON.stringify(state.proxyResult, null, 2)
+      : 'Request failed. Check the server output.'
+  } else {
+    proxyStatusEl.textContent = 'Ready to fetch protected data.'
+    proxyStatusEl.className = 'status'
+    proxyOutputEl.textContent = state.proxyResult
+      ? JSON.stringify(state.proxyResult, null, 2)
+      : 'Click the button to run a request through the local proxy.'
+  }
+
+  proxyDemoBtn.disabled = state.proxyLoading
+}
+
 async function loadMorePokemon() {
   if (state.listLoading) {
     return
@@ -250,9 +324,51 @@ searchInputEl.addEventListener('input', (event) => {
   renderList()
 })
 
-sortToggleBtn.addEventListener('click', () => {
-  state.sortDirection = state.sortDirection === 'asc' ? 'desc' : 'asc'
+sortNameBtn.addEventListener('click', () => {
+  if (state.sortMode === 'name') {
+    state.nameSortDirection = state.nameSortDirection === 'asc' ? 'desc' : 'asc'
+  } else {
+    state.sortMode = 'name'
+    state.nameSortDirection = 'asc'
+  }
+
   renderList()
 })
 
+sortNumberBtn.addEventListener('click', () => {
+  if (state.sortMode === 'number') {
+    state.numberSortDirection =
+      state.numberSortDirection === 'asc' ? 'desc' : 'asc'
+  } else {
+    state.sortMode = 'number'
+    state.numberSortDirection = 'asc'
+  }
+
+  renderList()
+})
+
+proxyDemoBtn.addEventListener('click', async () => {
+  if (state.proxyLoading) {
+    return
+  }
+
+  state.proxyLoading = true
+  state.proxyError = ''
+  state.proxyResult = null
+  renderProxyDemo()
+
+  try {
+    const data = await fetchProtectedResource(PROXY_DEMO_PATH, PROXY_DEMO_QUERY)
+    state.proxyResult = data
+  } catch (error) {
+    state.proxyError =
+      error?.message || 'Could not load protected API data.'
+    state.proxyResult = error?.details || null
+  } finally {
+    state.proxyLoading = false
+    renderProxyDemo()
+  }
+})
+
 loadMorePokemon()
+renderProxyDemo()
