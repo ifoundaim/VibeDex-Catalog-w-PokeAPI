@@ -92,7 +92,7 @@ const proxyDemoBtn = document.querySelector('#proxy-demo')
 const proxyStatusEl = document.querySelector('#proxy-status')
 const proxyOutputEl = document.querySelector('#proxy-output')
 
-const PROXY_DEMO_PATH = '/v1/some-resource'
+const PROXY_DEMO_PATH = '/__demo/protected'
 const PROXY_DEMO_QUERY = ''
 
 function getVisibleItems() {

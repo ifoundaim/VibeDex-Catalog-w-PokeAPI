@@ -1,5 +1,5 @@
 const BASE_URL = 'https://pokeapi.co/api/v2'
-const PROXY_URL = 'http://localhost:5174/api/proxy'
+const PROXY_URL = '/api/proxy'
 
 export async function fetchPokemonList(limit = 20, offset = 0) {
   const response = await fetch(`${BASE_URL}/pokemon?limit=${limit}&offset=${offset}`)
@@ -28,7 +28,17 @@ export async function fetchProtectedResource(path, query = '') {
     params.set('query', query)
   }
 
-  const response = await fetch(`${PROXY_URL}?${params.toString()}`)
+  let response
+
+  try {
+    response = await fetch(`${PROXY_URL}?${params.toString()}`)
+  } catch (error) {
+    const networkError = new Error(
+      'Proxy server is not reachable. Start the server and try again.'
+    )
+    networkError.details = { error: error?.message || 'Network error.' }
+    throw networkError
+  }
   const contentType = response.headers.get('content-type') || ''
   let payload
 

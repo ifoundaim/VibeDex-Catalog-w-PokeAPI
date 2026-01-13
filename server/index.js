@@ -35,10 +35,39 @@ function buildUpstreamUrl(path, query) {
   return `${trimmedBase}${pathValue}${queryValue}`
 }
 
-app.get('/api/proxy', async (req, res) => {
-  if (!PROXY_API_BASE_URL || !PROXY_API_KEY) {
+app.get('/__demo/protected', (req, res) => {
+  const authHeader = req.get('Authorization') || ''
+  const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : ''
+
+  if (!PROXY_API_KEY) {
     return res.status(500).json({
-      error: 'Proxy server is missing PROXY_API_BASE_URL or PROXY_API_KEY.'
+      error: 'Demo route missing PROXY_API_KEY.'
+    })
+  }
+
+  if (token !== PROXY_API_KEY) {
+    return res.status(401).json({
+      error: 'Invalid or missing bearer token.'
+    })
+  }
+
+  return res.json({
+    ok: true,
+    message: 'Protected demo payload unlocked.',
+    receivedAt: new Date().toISOString()
+  })
+})
+
+app.get('/api/proxy', async (req, res) => {
+  if (!PROXY_API_BASE_URL) {
+    return res.status(500).json({
+      error: 'Proxy server is missing PROXY_API_BASE_URL.'
+    })
+  }
+
+  if (!PROXY_API_KEY) {
+    return res.status(401).json({
+      error: 'Missing PROXY_API_KEY. Add it to server/.env and restart.'
     })
   }
 

@@ -15,20 +15,17 @@ npm --prefix server install
 npm run dev
 ```
 
-## Run client + server
+`npm run dev` starts both the Vite client and the proxy server.
+`npm run dev:all` is an alias for the same combined workflow.
+
+To run them separately:
 
 ```bash
-# Terminal 1 (client)
-npm run dev
+# Terminal 1 (client only)
+npm run dev:client
 
-# Terminal 2 (server)
-npm --prefix server run dev
-```
-
-Or run both with one command:
-
-```bash
-npm run dev:all
+# Terminal 2 (server only)
+npm run dev:server
 ```
 
 ## Server environment
@@ -43,7 +40,10 @@ cp server/.env.example server/.env
 - `PROXY_API_KEY`: Secret key used by the proxy server.
 
 The proxy uses `Authorization: Bearer <PROXY_API_KEY>` when calling the upstream API.
-The demo button calls the path defined in `src/main.js`, so update `PROXY_DEMO_PATH` to match your API.
+The demo button calls the path defined in `src/main.js`. For a self-contained demo, set
+`PROXY_API_BASE_URL` to `http://localhost:5173` and keep `PROXY_DEMO_PATH` as
+`/__demo/protected`.
+The Vite dev server proxies `/__demo` to the local proxy server for this flow.
 
 ## How it works
 
